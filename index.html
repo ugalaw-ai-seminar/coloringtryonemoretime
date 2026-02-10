@@ -360,22 +360,33 @@ Choose harmonious, vibrant colors that match the theme.`
             })
           });
           
-          const data = await response.json();
+          let data;
+          try {
+            data = await response.json();
+          } catch (e) {
+            throw new Error(`Response error: ${response.status} ${response.statusText}`);
+          }
           
           if (!response.ok) {
-            throw new Error(data.error?.message || `Error ${response.status}: ${JSON.stringify(data)}`);
+            throw new Error(data.error?.message || data.error?.status || `Error ${response.status}`);
           }
           
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!text) throw new Error('Empty response - check your API key');
+          
           const match = text.match(/\[[\s\S]*?\]/);
           if (match) {
             setSuggestedColors(JSON.parse(match[0]));
           } else {
-            throw new Error('Could not parse colors from response');
+            throw new Error('Invalid response format');
           }
         } catch (err) {
-          console.error('Color suggestion error:', err);
-          setColorError(err.message);
+          console.error('Error:', err);
+          if (err.name === 'TypeError' && err.message.includes('fetch')) {
+            setColorError('Network error - check internet connection');
+          } else {
+            setColorError(err.message);
+          }
         } finally {
           setIsLoadingColors(false);
         }
